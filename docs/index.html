@@ -292,11 +292,13 @@ footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88re
             <span class="muted" id="check-count" style="font-size:.85rem"></span>
           </div>
           <div class="checks" id="checks"></div>
+          <p class="muted" style="font-size:.88rem">Click a layer to run its check. Each one comes back <b>Normal</b> or <b>Problem</b>.</p>
           <div class="finding" id="finding"><p class="empty">Run a check to see what that layer shows.</p></div>
         </div>
 
         <div class="panel">
           <span class="step-label">Call the root cause</span>
+          <p class="muted" style="font-size:.88rem">Based on the checks, which layer caused this ticket?</p>
           <div class="verdicts" id="verdicts" role="group" aria-label="Root cause"></div>
           <div id="result"></div>
         </div>
@@ -758,9 +760,9 @@ scored <span class="kw">AS</span> (
     const t = TICKETS[state.t], v = state.verdict[state.t];
     if (!v) { $("result").innerHTML = '<p class="empty">Pick the layer you think caused it.</p>'; return; }
     if (v !== t.answer) {
-      const ran = state.checks[state.t][v];
-      $("result").innerHTML = `<div class="result wrong"><h3>Not this one.</h3>
-        <p>${ran ? `The ${LAYERS.find((l) => l.key === v).name.toLowerCase()} check came back normal for this ticket.` : `Run the ${LAYERS.find((l) => l.key === v).name.toLowerCase()} check first and see what it shows.`} Try another layer.</p></div>`;
+      const ran = state.checks[state.t][v], name = LAYERS.find((l) => l.key === v).name;
+      $("result").innerHTML = `<div class="result wrong"><h3>${name} isn't the cause of this ticket.</h3>
+        <p>${ran ? `Its check came back Normal, so the problem is in another layer. Look for the check marked Problem.` : `You haven't run the ${name.toLowerCase()} check yet. Click it under "Check each layer" above. It will come back Normal, which rules this layer out. Then try another layer.`}</p></div>`;
       return;
     }
     const o = t.outcome;
