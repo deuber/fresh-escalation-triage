@@ -215,6 +215,12 @@ table.wrap-cells td { white-space: normal; min-width: 180px; vertical-align: top
 
 .how { display: grid; gap: 8px; max-width: 72ch; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--tag); border-radius: 0 4px 4px 0; padding: 14px 16px; }
 
+.cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.cta { display: inline-block; background: var(--accent); color: var(--surface); font-family: var(--font-display); font-weight: 700; font-size: 1rem; padding: 11px 18px; border-radius: 4px; text-decoration: none; }
+.cta:hover { filter: brightness(1.1); }
+.rail-col { display: grid; gap: 8px; }
+.rail-hint { font-family: var(--font-display); font-weight: 700; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+
 footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88rem; color: var(--muted); display: grid; gap: 8px; }
 .links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 @media (prefers-reduced-motion: no-preference) {
@@ -236,6 +242,10 @@ footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88re
     <p class="notice"><b>This is a simulation.</b> Every store, item, number and table name is invented, and everything
       runs in your browser. It's a personal project modeled on the kinds of escalations described in public support
       engineering job postings for grocery AI platforms. It isn't affiliated with any company.</p>
+    <div class="cta-row">
+      <a class="cta" href="#bench">Start the game: work a ticket ↓</a>
+      <span class="muted" style="font-size:.92rem">Four real-world-style escalations. About five minutes.</span>
+    </div>
     <nav class="toc" aria-label="Sections">
       <a href="#why">Why this work</a>
       <a href="#bench">Work a ticket</a>
@@ -274,7 +284,7 @@ footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88re
       <div class="how">
         <p><b>How it works:</b> every ticket has exactly one layer at fault. Your job is to find it.</p>
         <ol class="list">
-          <li><b>Pick a ticket</b> from the list on the left.</li>
+          <li><b>Pick a ticket.</b> Click one of the produce items with a yellow tag, like Strawberries or Bananas.</li>
           <li><b>Run the checks.</b> Click each of the four layer cards under "Check each layer." Three come back <b>Normal</b>. One comes back <b>Problem</b>.</li>
           <li><b>Call the root cause.</b> Choose the layer whose check showed the Problem. Get it right and you'll see the cause, who fixes it, what I'd build to prevent it and what it cost.</li>
         </ol>
@@ -282,7 +292,10 @@ footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88re
       </div>
     </div>
     <div class="bench">
-      <div class="rail" id="rail" role="group" aria-label="Escalation tickets"></div>
+      <div class="rail-col">
+        <p class="rail-hint">Start here: click a ticket</p>
+        <div class="rail" id="rail" role="group" aria-label="Escalation tickets"></div>
+      </div>
       <div class="workspace">
         <div class="panel">
           <div class="panel-title">
