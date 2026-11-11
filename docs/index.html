@@ -213,6 +213,8 @@ pre.sql.plain { white-space: pre; }
 .flag { color: var(--bad); font-weight: 600; }
 table.wrap-cells td { white-space: normal; min-width: 180px; vertical-align: top; }
 
+.how { display: grid; gap: 8px; max-width: 72ch; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--tag); border-radius: 0 4px 4px 0; padding: 14px 16px; }
+
 footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88rem; color: var(--muted); display: grid; gap: 8px; }
 .links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 @media (prefers-reduced-motion: no-preference) {
@@ -269,8 +271,15 @@ footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88re
   <section id="bench" aria-labelledby="bench-h">
     <div class="sec-head">
       <h2 id="bench-h">Work a ticket</h2>
-      <p class="muted prose">Each ticket has one root cause. Run the checks in any order. A good habit is to rule out
-        the data before blaming the model.</p>
+      <div class="how">
+        <p><b>How it works:</b> every ticket has exactly one layer at fault. Your job is to find it.</p>
+        <ol class="list">
+          <li><b>Pick a ticket</b> from the list on the left.</li>
+          <li><b>Run the checks.</b> Click each of the four layer cards under "Check each layer." Three come back <b>Normal</b>. One comes back <b>Problem</b>.</li>
+          <li><b>Call the root cause.</b> Choose the layer whose check showed the Problem. Get it right and you'll see the cause, who fixes it, what I'd build to prevent it and what it cost.</li>
+        </ol>
+        <p class="muted" style="font-size:.88rem">Tip: rule out the data before blaming the model.</p>
+      </div>
     </div>
     <div class="bench">
       <div class="rail" id="rail" role="group" aria-label="Escalation tickets"></div>
