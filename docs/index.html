@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fresh Escalation Triage</title>
+<meta name="description" content="An interactive support engineering demo: triage grocery forecasting escalations across data feeds, item mapping, model forecast and app logic.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column (max 1100px); the triage bench is a two-pane workspace (ticket rail + investigation) that stacks on phones. Shelf-tag yellow marks labels and items, like price tags on a produce case. */
+:root {
+  color-scheme: light;
+  --bg: #F6F8F7;
+  --surface: #FFFFFF;
+  --ink: #15232B;
+  --muted: #56656C;
+  --line: #D9E1DE;
+  --tag: #F5CB2E;
+  --tag-ink: #2A2200;
+  --accent: #1E5E78;
+  --accent-soft: #E3EEF2;
+  --ok: #2E7D4F;
+  --ok-soft: #E4F2E9;
+  --bad: #B93A2E;
+  --bad-soft: #FBE7E4;
+  --code-bg: #10202A;
+  --code-fg: #DCE8EC;
+  --code-kw: #F5CB2E;
+  --code-cm: #8AA3AD;
+  --chart-bar: #A9C4CF;
+  --chart-line: #1E5E78;
+  --chart-oh: #B93A2E;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E171C; --surface: #15222A; --ink: #E4ECEF; --muted: #9AABB2; --line: #2A3A42;
+    --tag: #E8C02A; --tag-ink: #1F1900; --accent: #7FC0DA; --accent-soft: #1B3340;
+    --ok: #6CC793; --ok-soft: #173326; --bad: #F08A7E; --bad-soft: #3A1F1C;
+    --code-bg: #081117; --code-fg: #D6E4E9; --code-kw: #E8C02A; --code-cm: #7D949D;
+    --chart-bar: #3B5A67; --chart-line: #7FC0DA; --chart-oh: #F08A7E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E171C; --surface: #15222A; --ink: #E4ECEF; --muted: #9AABB2; --line: #2A3A42;
+  --tag: #E8C02A; --tag-ink: #1F1900; --accent: #7FC0DA; --accent-soft: #1B3340;
+  --ok: #6CC793; --ok-soft: #173326; --bad: #F08A7E; --bad-soft: #3A1F1C;
+  --code-bg: #081117; --code-fg: #D6E4E9; --code-kw: #E8C02A; --code-cm: #7D949D;
+  --chart-bar: #3B5A67; --chart-line: #7FC0DA; --chart-oh: #F08A7E;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 40px 64px; display: grid; gap: 56px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); font-weight: 800; line-height: 1.05; }
+h2 { font-size: 1.6rem; font-weight: 800; line-height: 1.2; }
+h3 { font-size: 1.1rem; font-weight: 700; }
+p { margin: 0; }
+.prose { max-width: 68ch; display: grid; gap: 12px; }
+.muted { color: var(--muted); }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--tag); outline-offset: 2px; }
+code, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+
+.eyebrow {
+  display: inline-block; font-family: var(--font-display); font-weight: 700; font-size: 0.74rem;
+  letter-spacing: 0.12em; text-transform: uppercase; background: var(--tag); color: var(--tag-ink);
+  padding: 3px 9px; border-radius: 2px; justify-self: start;
+}
+
+/* Hero */
+header.hero { display: grid; gap: 18px; }
+.hero .lede { font-size: 1.15rem; max-width: 62ch; }
+.byline { font-size: 0.95rem; color: var(--muted); }
+.notice {
+  border-left: 4px solid var(--tag); background: var(--surface); padding: 12px 16px;
+  font-size: 0.93rem; max-width: 72ch; border-radius: 0 4px 4px 0;
+}
+nav.toc { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 0.92rem; }
+nav.toc a { text-decoration: none; border-bottom: 1px solid var(--line); }
+
+section { display: grid; gap: 18px; scroll-margin-top: 16px; }
+.sec-head { display: grid; gap: 8px; }
+
+/* Bench */
+.bench { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+
+.rail { display: grid; gap: 12px; }
+.ticket {
+  all: unset; cursor: pointer; display: grid; gap: 6px; padding: 14px 14px 14px 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 4px; position: relative;
+}
+.ticket:hover { border-color: var(--accent); }
+.ticket[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
+.ticket:focus-visible { outline: 3px solid var(--tag); outline-offset: 2px; }
+.tag-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.shelf-tag {
+  background: var(--tag); color: var(--tag-ink); font-family: var(--font-display); font-weight: 800;
+  font-size: 0.82rem; padding: 2px 8px; border-radius: 2px; letter-spacing: 0.02em;
+}
+.code-tag { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+.ticket .quote { font-size: 0.92rem; }
+.ticket .who { font-size: 0.8rem; color: var(--muted); }
+.solved { font-size: 0.72rem; font-weight: 700; color: var(--ok); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.workspace { display: grid; gap: 18px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.panel-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.step-label { font-family: var(--font-display); font-weight: 700; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+.complaint { font-size: 1.05rem; font-style: italic; border-left: 3px solid var(--line); padding-left: 12px; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 0.88rem; color: var(--muted); }
+.facts b { color: var(--ink); font-weight: 600; }
+
+.chart-wrap { overflow-x: auto; }
+.chart-wrap svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.82rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; display: inline-block; border-radius: 1px; }
+
+.checks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .checks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.check {
+  all: unset; cursor: pointer; display: grid; gap: 4px; padding: 12px; border: 1px solid var(--line);
+  border-radius: 4px; background: var(--bg); min-height: 74px; align-content: start;
+}
+.check:hover { border-color: var(--accent); }
+.check:focus-visible { outline: 3px solid var(--tag); outline-offset: 2px; }
+.check .name { font-family: var(--font-display); font-weight: 700; font-size: 0.98rem; }
+.check .what { font-size: 0.78rem; color: var(--muted); line-height: 1.35; }
+.check[data-state="ok"] { border-color: var(--ok); background: var(--ok-soft); }
+.check[data-state="bad"] { border-color: var(--bad); background: var(--bad-soft); }
+.check[data-active="true"] { box-shadow: 0 0 0 2px var(--accent); }
+.pill { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; justify-self: start; padding: 1px 7px; border-radius: 999px; }
+.pill.ok { background: var(--ok); color: var(--surface); }
+.pill.bad { background: var(--bad); color: var(--surface); }
+.pill.idle { border: 1px solid var(--line); color: var(--muted); }
+
+.finding { display: grid; gap: 10px; min-width: 0; }
+.finding .summary { font-weight: 600; }
+.finding .summary.ok { color: var(--ok); }
+.finding .summary.bad { color: var(--bad); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-family: var(--font-display); font-weight: 700; font-size: 0.76rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.hl { color: var(--bad); font-weight: 700; }
+.empty { color: var(--muted); font-size: 0.93rem; }
+
+.verdicts { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+  all: unset; cursor: pointer; font-family: var(--font-display); font-weight: 700; font-size: 0.92rem;
+  padding: 9px 14px; border-radius: 4px; border: 1px solid var(--accent); color: var(--accent); background: var(--surface);
+}
+.btn:hover { background: var(--accent-soft); }
+.btn:focus-visible { outline: 3px solid var(--tag); outline-offset: 2px; }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+.result { display: grid; gap: 12px; border-radius: 4px; padding: 16px; }
+.result.right { background: var(--ok-soft); border: 1px solid var(--ok); }
+.result.wrong { background: var(--bad-soft); border: 1px solid var(--bad); }
+.result h3 { font-size: 1.05rem; }
+.result dl { margin: 0; display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 8px 16px; font-size: 0.93rem; }
+.result dt { font-weight: 700; }
+.result dd { margin: 0; }
+@media (max-width: 560px) { .result dl { grid-template-columns: minmax(0, 1fr); } .result dd { margin-bottom: 6px; } }
+
+pre.sql {
+  margin: 0; background: var(--code-bg); color: var(--code-fg); padding: 16px; border-radius: 4px;
+  overflow-x: auto; font-family: var(--font-mono); font-size: 0.84rem; line-height: 1.55;
+}
+pre.sql .kw { color: var(--code-kw); font-weight: 600; }
+pre.sql .cm { color: var(--code-cm); font-style: italic; }
+.sql-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.copy { font-size: 0.82rem; padding: 6px 10px; }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.tip { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: grid; gap: 6px; }
+.tip p { font-size: 0.93rem; }
+
+.calc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
+@media (max-width: 760px) { .calc { grid-template-columns: minmax(0, 1fr); } }
+.field { display: grid; gap: 4px; }
+.field label { font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; gap: 10px; }
+.field output { font-family: var(--font-mono); font-weight: 600; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.calc-out { display: grid; gap: 14px; }
+.big { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.big-label { font-size: 0.88rem; color: var(--muted); }
+
+footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88rem; color: var(--muted); display: grid; gap: 8px; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+@media (prefers-reduced-motion: no-preference) {
+  .finding, .result { animation: rise .25s ease-out; }
+  @keyframes rise { from { transform: translateY(4px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <span class="eyebrow">Support engineering demo</span>
+    <h1>Fresh Escalation Triage</h1>
+    <p class="lede">A store director writes in: "Why did it tell us to order this?" When the software making the
+      order is a forecasting model, the answer can live in four places. Pick a ticket, check each layer, and decide
+      where the problem really is.</p>
+    <p class="byline">Built by David Deuber</p>
+    <p class="notice"><b>This is a simulation.</b> Every store, item, number and table name is invented, and everything
+      runs in your browser. It's a personal project modeled on the kinds of escalations described in public support
+      engineering job postings for grocery AI platforms. It isn't affiliated with any company.</p>
+    <nav class="toc" aria-label="Sections">
+      <a href="#bench">Work a ticket</a>
+      <a href="#sql">The SQL behind each check</a>
+      <a href="#symptoms">Symptom to first check</a>
+      <a href="#tripups">Things that trip people up</a>
+      <a href="#deflect">Is it worth automating?</a>
+    </nav>
+  </header>
+
+  <section id="bench" aria-labelledby="bench-h">
+    <div class="sec-head">
+      <h2 id="bench-h">Work a ticket</h2>
+      <p class="muted prose">Each ticket has one root cause. Run the checks in any order. A good habit is to rule out
+        the data before blaming the model.</p>
+    </div>
+    <div class="bench">
+      <div class="rail" id="rail" role="group" aria-label="Escalation tickets"></div>
+      <div class="workspace">
+        <div class="panel">
+          <div class="panel-title">
+            <span class="step-label">The ticket</span>
+            <span class="code-tag" id="t-id"></span>
+          </div>
+          <p class="complaint" id="t-quote"></p>
+          <div class="facts" id="t-facts"></div>
+          <div class="chart-wrap" id="chart" role="img"></div>
+          <div class="legend" id="legend"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <span class="step-label">Check each layer</span>
+            <span class="muted" id="check-count" style="font-size:.85rem"></span>
+          </div>
+          <div class="checks" id="checks"></div>
+          <div class="finding" id="finding"><p class="empty">Run a check to see what that layer shows.</p></div>
+        </div>
+
+        <div class="panel">
+          <span class="step-label">Call the root cause</span>
+          <div class="verdicts" id="verdicts" role="group" aria-label="Root cause"></div>
+          <div id="result"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sql" aria-labelledby="sql-h">
+    <div class="sec-head">
+      <h2 id="sql-h">The SQL behind each check</h2>
+      <p class="muted prose">This shows the query for the last check you ran. The syntax is Databricks SQL. Table and
+        column names are invented, but the shape is what this work looks like: CTEs to keep steps readable, window
+        functions for "compared to normal," and always a join back to the source of truth.</p>
+    </div>
+    <div class="sql-head">
+      <span class="mono muted" id="sql-label">Data feeds check</span>
+      <button class="btn copy" id="copy-sql" type="button">Copy query</button>
+    </div>
+    <pre class="sql" id="sql-box"></pre>
+  </section>
+
+  <section id="symptoms" aria-labelledby="sym-h">
+    <div class="sec-head">
+      <h2 id="sym-h">Symptom to first check</h2>
+      <p class="muted prose">Where I'd look first, not where the answer always is.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>What the store sees</th><th>Check first</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Order far larger than usual, one store</td><td>Data feeds</td><td>A stuck on-hand reading makes the shelf look empty</td></tr>
+          <tr><td>Order off by a round factor (10×, 12×)</td><td>Item mapping</td><td>Case size or unit of measure changed</td></tr>
+          <tr><td>Ran out before a holiday or promo</td><td>Model forecast</td><td>Demand lift underestimated; data can be perfect</td></tr>
+          <tr><td>Right quantity, wrong day</td><td>App logic</td><td>Dates, time zones and cutoffs live in the app</td></tr>
+          <tr><td>Same problem across a whole banner</td><td>Data feeds or mapping</td><td>Retailer-side integrations fail per banner</td></tr>
+          <tr><td>Problem started on a specific date</td><td>Change history</td><td>Item master edits, feed changes, releases</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tripups" aria-labelledby="trip-h">
+    <h2 id="trip-h">Things that trip people up</h2>
+    <div class="grid2">
+      <div class="tip"><h3>A stale feed looks like a bad model</h3><p>The model forecasts correctly, then orders against an on-hand number from three days ago. Check freshness before accuracy.</p></div>
+      <div class="tip"><h3>Joins that quietly duplicate rows</h3><p>An item with two case-size history rows doubles every sales row it touches. Count before and after each join.</p></div>
+      <div class="tip"><h3>UTC versus store time</h3><p>A timestamp stored in UTC lands on tomorrow's date for anything approved after 4 PM Pacific in the winter.</p></div>
+      <div class="tip"><h3>The convenient table isn't the source of truth</h3><p>Validate against the store's physical count or the retailer's feed, not a derived table that inherited the error.</p></div>
+      <div class="tip"><h3>A model miss isn't a bug</h3><p>Nothing to hotfix. The job is to package evidence so the science team can see the pattern across stores.</p></div>
+      <div class="tip"><h3>Fix one store, then count the rest</h3><p>Before closing, run the same query across every store to size the impact. That number decides the priority.</p></div>
+    </div>
+  </section>
+
+  <section id="deflect" aria-labelledby="def-h">
+    <div class="sec-head">
+      <h2 id="def-h">Is it worth automating?</h2>
+      <p class="muted prose">Each ticket above ends with a check Tier 1 could run themselves: a dashboard, a playbook or
+        an AI skill. Before building one, I set a baseline. Move the sliders to try example numbers. These aren't real figures.</p>
+    </div>
+    <div class="panel calc">
+      <div style="display:grid;gap:16px">
+        <div class="field"><label for="c-tix">Escalations of this type per week <output id="o-tix"></output></label><input id="c-tix" type="range" min="1" max="60" value="12"></div>
+        <div class="field"><label for="c-min">Support engineer minutes per escalation <output id="o-min"></output></label><input id="c-min" type="range" min="10" max="180" step="5" value="45"></div>
+        <div class="field"><label for="c-share">Share Tier 1 could resolve with the new check <output id="o-share"></output></label><input id="c-share" type="range" min="0" max="100" step="5" value="60"></div>
+      </div>
+      <div class="calc-out">
+        <div><div class="big" id="r-avoid"></div><div class="big-label">escalations avoided per month</div></div>
+        <div><div class="big" id="r-hours"></div><div class="big-label">engineer hours back per month</div></div>
+        <p class="muted" style="font-size:.88rem">Measure the same two numbers again 30 days after launch. If they didn't move, the check isn't being used, or it's catching the wrong cases.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Built by David Deuber, senior support engineer, as a personal project. Not affiliated with any company named or implied.
+      All data is invented. Nothing leaves your browser.</p>
+    <div class="links">
+      <a href="https://www.linkedin.com/in/ddeuber/" target="_blank" rel="noopener">LinkedIn</a>
+      <a href="https://github.com/deuber" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/deuber/fresh-escalation-triage" target="_blank" rel="noopener">Source for this page</a>
+      <a href="https://deuber.github.io/vgs-proxy-demo/" target="_blank" rel="noopener">Another demo: VGS proxy</a>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const LAYERS = [
+    { key: "feeds", name: "Data feeds", what: "Are inventory, sales and deliveries current?" },
+    { key: "mapping", name: "Item mapping", what: "Case size, unit, item codes" },
+    { key: "model", name: "Model forecast", what: "Did predicted demand match sales?" },
+    { key: "app", name: "App logic", what: "Order math, dates, cutoffs" }
+  ];
+  const VERDICT_NAMES = { feeds: "Data feed", mapping: "Item mapping", model: "Model forecast", app: "App logic" };
+
+  function days(startISO, n) {
+    const out = []; const d = new Date(startISO + "T12:00:00Z");
+    const m = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    for (let i = 0; i < n; i++) { const x = new Date(d.getTime() + i * 864e5); out.push(m[x.getUTCMonth()] + " " + x.getUTCDate()); }
+    return out;
+  }
+
+  const feedsCurrent = (now) => ({
+    status: "ok",
+    summary: "All three feeds reported within the last six hours.",
+    cols: ["Feed", "Last reported (PT)", "Hours since"],
+    rows: [["inventory_on_hand", now + " 05:52", "4.1"], ["pos_sales", now + " 05:10", "4.8"], ["deliveries", now + " 04:30", "5.5"]]
+  });
+
+  const SQL = {
+    feeds: `<span class="cm">-- How long since each feed last reported for this store?</span>
+<span class="kw">SELECT</span> feed_name,
+       <span class="kw">MAX</span>(reported_at) <span class="kw">AS</span> last_reported,
+       timestampdiff(<span class="kw">HOUR</span>, <span class="kw">MAX</span>(reported_at), current_timestamp()) <span class="kw">AS</span> hours_since
+<span class="kw">FROM</span>   ingest.feed_events
+<span class="kw">WHERE</span>  store_id = :store_id
+  <span class="kw">AND</span>  reported_at >= current_date() - <span class="kw">INTERVAL</span> 7 <span class="kw">DAYS</span>
+<span class="kw">GROUP BY</span> feed_name
+<span class="kw">ORDER BY</span> hours_since <span class="kw">DESC</span>;`,
+    mapping: `<span class="cm">-- Did anything about this item change recently, and who changed it?</span>
+<span class="kw">SELECT</span> item_id, description, order_unit, units_per_case,
+       valid_from, changed_by
+<span class="kw">FROM</span>   catalog.item_master_history
+<span class="kw">WHERE</span>  item_id = :item_id
+  <span class="kw">AND</span>  banner_id = :banner_id
+<span class="kw">ORDER BY</span> valid_from <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>  5;`,
+    model: `<span class="cm">-- Compare each day's sales to its forecast and to the store's normal.</span>
+<span class="kw">WITH</span> daily <span class="kw">AS</span> (
+  <span class="kw">SELECT</span> sale_date, <span class="kw">SUM</span>(units_sold) <span class="kw">AS</span> sold
+  <span class="kw">FROM</span>   sales.daily_item
+  <span class="kw">WHERE</span>  store_id = :store_id <span class="kw">AND</span> item_id = :item_id
+  <span class="kw">GROUP BY</span> sale_date
+),
+scored <span class="kw">AS</span> (
+  <span class="kw">SELECT</span> d.sale_date, d.sold, f.forecast_units,
+         <span class="kw">AVG</span>(d.sold) <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> d.sale_date
+           <span class="kw">ROWS BETWEEN</span> 28 <span class="kw">PRECEDING AND</span> 8 <span class="kw">PRECEDING</span>) <span class="kw">AS</span> normal
+  <span class="kw">FROM</span>   daily d
+  <span class="kw">JOIN</span>   forecasts.daily_item f            <span class="cm">-- one row per store/item/day</span>
+    <span class="kw">ON</span>   f.store_id = :store_id <span class="kw">AND</span> f.item_id = :item_id
+   <span class="kw">AND</span>   f.forecast_date = d.sale_date
+)
+<span class="kw">SELECT</span> sale_date, sold, forecast_units,
+       round(sold / forecast_units - 1, 2) <span class="kw">AS</span> miss_pct,
+       round(sold / normal, 2)             <span class="kw">AS</span> actual_lift,
+       round(forecast_units / normal, 2)   <span class="kw">AS</span> forecast_lift
+<span class="kw">FROM</span>   scored
+<span class="kw">ORDER BY</span> sale_date <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>  7;`,
+    app: `<span class="cm">-- Rebuild the order math and the delivery date from raw inputs.</span>
+<span class="kw">SELECT</span> o.order_id,
+       o.approved_at                                              <span class="kw">AS</span> approved_utc,
+       from_utc_timestamp(o.approved_at, s.timezone)                <span class="kw">AS</span> approved_local,
+       date_add(<span class="kw">to_date</span>(from_utc_timestamp(o.approved_at, s.timezone)), 1) <span class="kw">AS</span> expected_delivery,
+       o.delivery_date                                            <span class="kw">AS</span> scheduled_delivery,
+       o.recommended_units, o.ordered_cases
+<span class="kw">FROM</span>   orders.store_orders o
+<span class="kw">JOIN</span>   ref.stores s <span class="kw">ON</span> s.store_id = o.store_id
+<span class="kw">WHERE</span>  o.store_id = :store_id <span class="kw">AND</span> o.item_id = :item_id
+<span class="kw">ORDER BY</span> o.approved_at <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>  5;`
+  };
+
+  const TICKETS = [
+    {
+      id: "ESC-2291", item: "Strawberries 1 lb", code: "item 30552 · case of 8", store: "Store 417, Valley Fresh",
+      who: "Store director, via Tier 1", unit: "clamshells",
+      quote: "\"It told us to order 36 cases of strawberries. We take about 9. Half of these will end up in the dumpster.\"",
+      facts: [["Opened", "Wed Nov 11"], ["Department", "Produce"], ["Usual order", "8–10 cases"]],
+      dates: days("2026-10-29", 14),
+      sold: [72,68,81,94,88,70,66,74,71,83,96,90,73,69],
+      fc:   [70,71,78,90,91,72,68,72,73,80,92,93,75,71],
+      oh:   [190,204,188,176,212,198,207,195,201,186,16,16,16,16],
+      answer: "feeds",
+      checks: {
+        feeds: { status: "bad", summary: "On-hand inventory hasn't reported since Sunday morning. Sales and deliveries are current.",
+          cols: ["Feed", "Last reported (PT)", "Hours since"],
+          rows: [["inventory_on_hand", "Nov 8 06:02", "76.0"], ["pos_sales", "Nov 11 05:10", "4.8"], ["deliveries", "Nov 11 04:30", "5.5"]], hl: [0] },
+        mapping: { status: "ok", summary: "Case size is 8 clamshells and hasn't changed since March 2025.",
+          cols: ["Item", "Order unit", "Units per case", "Valid from", "Changed by"],
+          rows: [["30552 Strawberries 1 lb", "case", "8", "2025-03-04", "catalog_import"]] },
+        model: { status: "ok", summary: "The forecast tracks sales within about 5%. Demand isn't what's off.",
+          cols: ["Date", "Sold", "Forecast", "Miss"],
+          rows: [["Nov 11", "69", "71", "-3%"], ["Nov 10", "73", "75", "-3%"], ["Nov 9", "90", "93", "-3%"], ["Nov 8", "96", "92", "+4%"], ["Nov 7", "83", "80", "+4%"]] },
+        app: { status: "ok", summary: "The order math is correct for the inputs it was given. It believed only 16 clamshells were on the shelf.",
+          cols: ["Step", "Value"],
+          rows: [["Forecast, next 3 days", "230"], ["Safety stock", "+70"], ["On-hand the system believes", "−16"], ["Need", "284 → 36 cases"], ["Same math with the store's count (228)", "72 → 9 cases"]] }
+      },
+      outcome: {
+        cause: "The retailer's on-hand inventory feed stopped sending updates after Sunday's early-morning count. The model kept seeing 16 clamshells, close to empty, and ordered to refill.",
+        owner: "The retailer's integration team restarts the feed, with Solutions Engineering. Tier 1 helps the store correct today's order by hand.",
+        build: "A feed-freshness dashboard that flags any store whose on-hand feed is more than 24 hours old, plus a Tier 1 playbook or AI skill step: \"Over-order ticket? Check feed freshness first.\"",
+        measure: "Share of over-order tickets caused by stale feeds, and hours from the feed stopping to someone noticing. Today that gap was three days."
+      }
+    },
+    {
+      id: "ESC-2304", item: "Bananas", code: "PLU 4011 · sold by lb", store: "Store 233, Northside Market",
+      who: "Produce manager, via Tier 1", unit: "lb",
+      quote: "\"Today's order says 144 cases of bananas. We have room for maybe 15.\"",
+      facts: [["Opened", "Wed Nov 11"], ["Department", "Produce"], ["Usual order", "14–16 cases"]],
+      dates: days("2026-10-29", 14),
+      sold: [182,190,176,205,214,188,179,185,192,181,201,220,189,184],
+      fc:   [185,188,180,200,210,190,182,184,190,184,198,215,192,186],
+      oh:   [310,295,320,305,298,315,300,308,296,312,301,290,305,299],
+      answer: "mapping",
+      checks: {
+        feeds: feedsCurrent("Nov 11"),
+        mapping: { status: "bad", summary: "Case size changed from 40 lb to 4 lb on Monday in an automated vendor sync.",
+          cols: ["Item", "Order unit", "Units per case", "Valid from", "Changed by"],
+          rows: [["4011 Bananas", "case", "4 lb", "2026-11-09", "vendor_sync"], ["4011 Bananas", "case", "40 lb", "2024-06-17", "catalog_import"]], hl: [0] },
+        model: { status: "ok", summary: "The forecast tracks sales within about 3%. It recommended 576 lb for the next three days, which is normal.",
+          cols: ["Date", "Sold (lb)", "Forecast (lb)", "Miss"],
+          rows: [["Nov 11", "184", "186", "-1%"], ["Nov 10", "189", "192", "-2%"], ["Nov 9", "220", "215", "+2%"], ["Nov 8", "201", "198", "+2%"], ["Nov 7", "181", "184", "-2%"]] },
+        app: { status: "ok", summary: "The conversion did exactly what the item master told it to do.",
+          cols: ["Step", "Value"],
+          rows: [["Recommended", "576 lb"], ["÷ units per case from item master", "4 lb"], ["Ordered", "144 cases"], ["Same math with 40 lb cases", "14.4 → 15 cases"]] }
+      },
+      outcome: {
+        cause: "A vendor catalog sync overwrote the banana case size with 4 lb, likely a dropped zero. Every order converts pounds to cases using that value, so the order came out ten times too large.",
+        owner: "Catalog or Data Engineering corrects the item record and adds a guard on vendor_sync. Tier 1 holds today's order for every store in the banner, not just this one.",
+        build: "A daily check for case-size changes over 50% on any item, sent to a support channel, plus a query that lists every store whose order used the bad value.",
+        measure: "Number of stores and orders affected before detection. Then the same number for the next mapping error, once the check is live."
+      }
+    },
+    {
+      id: "ESC-2340", item: "Sweet potatoes", code: "item 31877 · sold by lb", store: "Store 412, Valley Fresh",
+      who: "Store director, via account manager", unit: "lb",
+      quote: "\"We ran out of sweet potatoes Tuesday afternoon, two days before Thanksgiving. Customers noticed.\"",
+      facts: [["Opened", "Wed Nov 25"], ["Department", "Produce"], ["Holiday", "Thanksgiving, Nov 26"]],
+      dates: days("2026-11-11", 14),
+      sold: [58,61,55,63,70,82,90,104,121,138,150,162,171,96],
+      fc:   [57,60,57,62,68,76,80,88,96,104,110,114,118,120],
+      oh:   [240,230,226,220,214,200,184,162,140,110,80,46,18,0],
+      answer: "model",
+      checks: {
+        feeds: feedsCurrent("Nov 24"),
+        mapping: { status: "ok", summary: "Case size is 40 lb and hasn't changed in two years.",
+          cols: ["Item", "Order unit", "Units per case", "Valid from", "Changed by"],
+          rows: [["31877 Sweet potatoes", "case", "40 lb", "2024-09-02", "catalog_import"]] },
+        model: { status: "bad", summary: "Sales peaked at 2.8× normal. The forecast expected about 2.0×. The same week last year ran 2.7×.",
+          cols: ["Date", "Sold (lb)", "Forecast (lb)", "Miss", "Actual lift", "Forecast lift"],
+          rows: [["Nov 24", "96*", "120", "stockout", "", ""], ["Nov 23", "171", "118", "+45%", "2.8×", "2.0×"], ["Nov 22", "162", "114", "+42%", "2.7×", "1.9×"], ["Nov 21", "150", "110", "+36%", "2.5×", "1.8×"], ["Nov 20", "138", "104", "+33%", "2.3×", "1.7×"]], hl: [1, 2] },
+        app: { status: "ok", summary: "Orders matched the forecast minus on-hand each day. The app ordered what the model asked for.",
+          cols: ["Step", "Value"],
+          rows: [["Forecast, Nov 21–23", "342 lb"], ["On-hand Nov 20", "−110 lb"], ["Safety stock", "+60 lb"], ["Ordered", "292 lb → 8 cases"], ["Actually sold Nov 21–23", "483 lb"]] }
+      },
+      outcome: {
+        cause: "Feeds, mapping and order math were all correct. The model underestimated the Thanksgiving lift for this item at this store. Nothing is broken, so there's nothing to hotfix.",
+        owner: "Applied Science, with evidence from Support: lift by day, last year's comparison, and whether other stores in the banner missed the same way.",
+        build: "A pre-holiday report that lists items whose forecast lift is well below last year's actual lift, sent to account managers a week ahead so stores can adjust by hand.",
+        measure: "Holiday stockout tickets per banner, year over year, and how many flagged items stores adjusted before the holiday."
+      }
+    },
+    {
+      id: "ESC-2318", item: "Spring mix 5 oz", code: "item 40210 · case of 12", store: "Store 105, Coastal Foods",
+      who: "Store director, via Tier 1", unit: "bags",
+      quote: "\"About once a week our salad shows up a day late and the case is empty all morning. The quantity is fine, the day is wrong.\"",
+      facts: [["Opened", "Wed Nov 11"], ["Department", "Produce"], ["Stockouts", "Oct 31, Nov 4, Nov 8"]],
+      dates: days("2026-10-29", 14),
+      sold: [34,31,7,36,30,33,6,35,32,29,8,37,31,30],
+      fc:   [33,32,33,35,31,33,32,34,33,31,34,36,32,31],
+      oh:   [40,38,0,44,41,39,0,42,40,37,0,45,41,39],
+      answer: "app",
+      checks: {
+        feeds: feedsCurrent("Nov 11"),
+        mapping: { status: "ok", summary: "Case size is 12 bags and hasn't changed this year.",
+          cols: ["Item", "Order unit", "Units per case", "Valid from", "Changed by"],
+          rows: [["40210 Spring mix 5 oz", "case", "12", "2025-11-18", "catalog_import"]] },
+        model: { status: "ok", summary: "The forecast is steady at about 33 bags a day. Sales drop only on stockout days, so the model isn't the cause.",
+          cols: ["Date", "Sold", "Forecast", "On-hand"],
+          rows: [["Nov 8", "8", "34", "0"], ["Nov 7", "29", "31", "37"], ["Nov 4", "6", "32", "0"], ["Nov 3", "33", "33", "39"], ["Oct 31", "7", "33", "0"]] },
+        app: { status: "bad", summary: "Late-afternoon approvals are scheduled a day late: after 4 PM Pacific now, after 5 PM before daylight time ended Nov 1. The delivery date is calculated from the UTC timestamp.",
+          cols: ["Order", "Approved (UTC)", "Approved (PT)", "Expected delivery", "Scheduled delivery"],
+          rows: [["88731", "Nov 8 00:38", "Nov 7 16:38", "Nov 8", "Nov 9"], ["88655", "Nov 5 18:15", "Nov 5 10:15", "Nov 6", "Nov 6"], ["88604", "Nov 4 00:51", "Nov 3 16:51", "Nov 4", "Nov 5"], ["88412", "Oct 31 00:42", "Oct 30 17:42", "Oct 31", "Nov 1"]], hl: [0, 2, 3] }
+      },
+      outcome: {
+        cause: "The app takes the approval time in UTC and adds one day to get the delivery date. UTC is 8 hours ahead of Pacific in winter (7 in summer), so anything approved after 4 PM local is already \"tomorrow\" in UTC and gets scheduled a day late.",
+        owner: "Product Engineering, with the query above as the reproduction. Until it ships, Tier 1 tells affected stores to approve before 4 PM local.",
+        build: "Run the same query across every store to count affected stores and orders. Then write a short Tier 1 playbook entry so the next \"right quantity, wrong day\" ticket is solved in minutes.",
+        measure: "Late-scheduled orders per week across all stores. It should drop to zero after the fix. If it doesn't, the fix missed a path."
+      }
+    }
+  ];
+
+  const state = { t: 0, checks: TICKETS.map(() => ({})), verdict: TICKETS.map(() => null), last: "feeds" };
+  try { const s = JSON.parse(localStorage.getItem("triage-state") || "null"); if (s && s.checks && s.checks.length === TICKETS.length) Object.assign(state, s); } catch (e) {}
+  const save = () => { try { localStorage.setItem("triage-state", JSON.stringify(state)); } catch (e) {} };
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function renderRail() {
+    $("rail").innerHTML = TICKETS.map((t, i) => {
+      const solved = state.verdict[i] === t.answer;
+      return `<button class="ticket" type="button" id="ticket-${i}" aria-pressed="${i === state.t}" data-i="${i}">
+        <span class="tag-row"><span class="shelf-tag">${esc(t.item)}</span><span class="code-tag">${esc(t.id)}</span></span>
+        <span class="quote">${esc(t.quote)}</span>
+        <span class="who">${esc(t.store)} · ${esc(t.who)}</span>
+        ${solved ? '<span class="solved">Solved</span>' : ""}
+      </button>`;
+    }).join("");
+    $("rail").querySelectorAll(".ticket").forEach((b) => b.addEventListener("click", () => { state.t = +b.dataset.i; save(); renderAll(); }));
+  }
+
+  function renderTicket() {
+    const t = TICKETS[state.t];
+    $("t-id").textContent = t.id + " · " + t.code;
+    $("t-quote").textContent = t.quote;
+    $("t-facts").innerHTML = [["Store", t.store]].concat(t.facts).map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join("");
+    renderChart(t);
+  }
+
+  function renderChart(t) {
+    const W = 680, H = 250, L = 46, R = 14, T = 14, B = 34;
+    const n = t.dates.length;
+    const max = Math.max(...t.sold, ...t.fc, ...t.oh);
+    const step = max > 250 ? 100 : max > 120 ? 50 : 20;
+    const top = Math.ceil(max / step) * step;
+    const x = (i) => L + (i + 0.5) * ((W - L - R) / n);
+    const y = (v) => T + (H - T - B) * (1 - v / top);
+    const bw = ((W - L - R) / n) * 0.56;
+    let g = "";
+    for (let v = 0; v <= top; v += step) {
+      g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>`;
+      g += `<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="var(--font-mono)">${v}</text>`;
+    }
+    t.sold.forEach((v, i) => { g += `<rect x="${x(i) - bw / 2}" y="${y(v)}" width="${bw}" height="${y(0) - y(v)}" fill="var(--chart-bar)" rx="1"/>`; });
+    const path = (arr) => arr.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)).join(" ");
+    g += `<path d="${path(t.fc)}" fill="none" stroke="var(--chart-line)" stroke-width="2.2"/>`;
+    g += `<path d="${path(t.oh)}" fill="none" stroke="var(--chart-oh)" stroke-width="2" stroke-dasharray="5 4"/>`;
+    t.dates.forEach((d, i) => { if (i % 2 === 0 || i === n - 1) g += `<text x="${x(i)}" y="${H - 12}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="var(--font-body)">${d}</text>`; });
+    g += `<text x="${L}" y="${T - 2}" font-size="11" fill="var(--muted)" font-family="var(--font-body)">${esc(t.unit)}</text>`;
+    $("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">${g}</svg>`;
+    $("chart").setAttribute("aria-label", `Daily ${t.item} sales, forecast and reported on-hand inventory, ${t.dates[0]} to ${t.dates[n - 1]}`);
+    $("legend").innerHTML = `<span><i class="sw" style="background:var(--chart-bar)"></i>Units sold</span>
+      <span><i class="sw" style="background:var(--chart-line);height:3px"></i>Forecast</span>
+      <span><i class="sw" style="border-top:2px dashed var(--chart-oh);height:0"></i>On-hand the system sees</span>`;
+  }
+
+  function renderChecks() {
+    const t = TICKETS[state.t], done = state.checks[state.t];
+    $("checks").innerHTML = LAYERS.map((l) => {
+      const s = done[l.key] ? t.checks[l.key].status : "";
+      const pill = s === "ok" ? '<span class="pill ok">Normal</span>' : s === "bad" ? '<span class="pill bad">Problem</span>' : '<span class="pill idle">Not run</span>';
+      return `<button class="check" type="button" id="check-${l.key}" data-k="${l.key}" data-state="${s}" data-active="${state.last === l.key && !!done[l.key]}">
+        <span class="name">${l.name}</span><span class="what">${l.what}</span>${pill}</button>`;
+    }).join("");
+    $("checks").querySelectorAll(".check").forEach((b) => b.addEventListener("click", () => {
+      state.checks[state.t][b.dataset.k] = true; state.last = b.dataset.k; save(); renderChecks(); renderFinding(); renderSQL();
+    }));
+    const c = Object.keys(done).length;
+    $("check-count").textContent = c + " of 4 run";
+  }
+
+  function renderFinding() {
+    const t = TICKETS[state.t], k = state.last;
+    if (!state.checks[state.t][k]) { $("finding").innerHTML = '<p class="empty">Run a check to see what that layer shows.</p>'; return; }
+    const f = t.checks[k], hl = f.hl || [];
+    const head = f.cols.map((c) => `<th>${esc(c)}</th>`).join("");
+    const body = f.rows.map((r, i) => `<tr>${r.map((v) => `<td class="${hl.includes(i) ? "hl" : ""}">${esc(v)}</td>`).join("")}</tr>`).join("");
+    $("finding").innerHTML = `<p class="summary ${f.status}">${LAYERS.find((l) => l.key === k).name}: ${esc(f.summary)}</p>
+      <div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+      <p class="muted" style="font-size:.85rem">The query behind this check is in <a href="#sql">The SQL behind each check</a>.</p>`;
+  }
+
+  function renderVerdicts() {
+    const v = state.verdict[state.t];
+    $("verdicts").innerHTML = LAYERS.map((l) => `<button class="btn" type="button" id="verdict-${l.key}" data-k="${l.key}" aria-pressed="${v === l.key}">${VERDICT_NAMES[l.key]}</button>`).join("");
+    $("verdicts").querySelectorAll(".btn").forEach((b) => b.addEventListener("click", () => {
+      state.verdict[state.t] = b.dataset.k; save(); renderVerdicts(); renderResult(); renderRail();
+    }));
+  }
+
+  function renderResult() {
+    const t = TICKETS[state.t], v = state.verdict[state.t];
+    if (!v) { $("result").innerHTML = '<p class="empty">Pick the layer you think caused it.</p>'; return; }
+    if (v !== t.answer) {
+      const ran = state.checks[state.t][v];
+      $("result").innerHTML = `<div class="result wrong"><h3>Not this one.</h3>
+        <p>${ran ? `The ${LAYERS.find((l) => l.key === v).name.toLowerCase()} check came back normal for this ticket.` : `Run the ${LAYERS.find((l) => l.key === v).name.toLowerCase()} check first and see what it shows.`} Try another layer.</p></div>`;
+      return;
+    }
+    const o = t.outcome;
+    $("result").innerHTML = `<div class="result right"><h3>Right: ${VERDICT_NAMES[t.answer].toLowerCase()}.</h3>
+      <dl><dt>Root cause</dt><dd>${esc(o.cause)}</dd>
+      <dt>Who fixes it</dt><dd>${esc(o.owner)}</dd>
+      <dt>What I'd build</dt><dd>${esc(o.build)}</dd>
+      <dt>How I'd measure it</dt><dd>${esc(o.measure)}</dd></dl></div>`;
+  }
+
+  function renderSQL() {
+    const k = state.last;
+    $("sql-label").textContent = LAYERS.find((l) => l.key === k).name + " check";
+    $("sql-box").innerHTML = SQL[k];
+  }
+
+  $("copy-sql").addEventListener("click", () => {
+    const text = $("sql-box").innerText, btn = $("copy-sql");
+    const done = () => { btn.textContent = "Copied"; setTimeout(() => (btn.textContent = "Copy query"), 1500); };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents($("sql-box")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "Selected. Press Ctrl+C"; };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  });
+
+  function calc() {
+    const tix = +$("c-tix").value, min = +$("c-min").value, share = +$("c-share").value / 100;
+    $("o-tix").textContent = tix; $("o-min").textContent = min + " min"; $("o-share").textContent = Math.round(share * 100) + "%";
+    const avoided = tix * 4.33 * share;
+    $("r-avoid").textContent = Math.round(avoided);
+    $("r-hours").textContent = Math.round((avoided * min) / 60);
+  }
+  ["c-tix", "c-min", "c-share"].forEach((id) => $(id).addEventListener("input", calc));
+
+  function renderAll() { renderRail(); renderTicket(); renderChecks(); renderFinding(); renderVerdicts(); renderResult(); renderSQL(); }
+  renderAll(); calc();
+})();
+</script>
+</body>
+</html>
