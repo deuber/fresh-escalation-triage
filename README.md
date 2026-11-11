@@ -13,7 +13,11 @@ An interactive, single-page support engineering exercise. A grocery store writes
   - **App logic:** delivery dates are calculated from a UTC timestamp, so late-afternoon approvals land a day late.
 - **Check each layer:** sales, forecast and on-hand chart per ticket, plus the evidence table each check returns.
 - **The SQL behind each check:** Databricks-style queries using CTEs, window functions and joins back to the source of truth.
-- **Resolution for each ticket:** root cause, who fixes it, what I'd build so Tier 1 can catch it next time, and how I'd measure it.
+- **Why this work:** in fresh, profit and waste are the same problem. Every pound that sells instead of being thrown out is margin for the grocer and food that got eaten.
+- **Resolution for each ticket:** root cause, who fixes it, what I'd build so Tier 1 can catch it next time, how I'd measure it, and what it costs in waste or lost sales.
+- **From escalation to Tier 1 skill:** a sketch of a Claude skill that runs the feed and item-mapping checks before escalating, and where that automation should stop.
+- **The update I'd post:** an example impact update with baseline, result, owner and ask, including the stuck item.
+- **How this maps to the role:** the responsibilities of a senior support engineering role, and where the page speaks to each.
 - **Symptom to first check:** a quick triage table.
 - **Things that trip people up:** stale feeds, duplicating joins, UTC vs. store time, and other common traps.
 - **Is it worth automating?** A small calculator for escalations avoided and engineer hours saved.

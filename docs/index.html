@@ -206,6 +206,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .big { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .big-label { font-size: 0.88rem; color: var(--muted); }
 
+.list { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 0.93rem; }
+pre.sql.plain { white-space: pre; }
+.post { gap: 12px; }
+.post-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 0.88rem; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.flag { color: var(--bad); font-weight: 600; }
+table.wrap-cells td { white-space: normal; min-width: 180px; vertical-align: top; }
+
 footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88rem; color: var(--muted); display: grid; gap: 8px; }
 .links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 @media (prefers-reduced-motion: no-preference) {
@@ -228,13 +235,36 @@ footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88re
       runs in your browser. It's a personal project modeled on the kinds of escalations described in public support
       engineering job postings for grocery AI platforms. It isn't affiliated with any company.</p>
     <nav class="toc" aria-label="Sections">
+      <a href="#why">Why this work</a>
       <a href="#bench">Work a ticket</a>
       <a href="#sql">The SQL behind each check</a>
+      <a href="#skill">From escalation to Tier 1 skill</a>
+      <a href="#deflect">Is it worth automating?</a>
+      <a href="#update">The update I'd post</a>
       <a href="#symptoms">Symptom to first check</a>
       <a href="#tripups">Things that trip people up</a>
-      <a href="#deflect">Is it worth automating?</a>
+      <a href="#role">How this maps to the role</a>
     </nav>
   </header>
+
+  <section id="why" aria-labelledby="why-h">
+    <div class="sec-head">
+      <span class="eyebrow">Why this work</span>
+      <h2 id="why-h">In fresh, a wrong order ends up in the dumpster or on an empty shelf</h2>
+    </div>
+    <div class="grid2">
+      <div class="tip"><h3>Too much</h3><p>Order too much and it goes into the dumpster by Friday. Shrink comes straight out of a margin that is already thin.</p></div>
+      <div class="tip"><h3>Too little</h3><p>Order too little and a shopper leaves without it, and may do the rest of their shopping somewhere else.</p></div>
+    </div>
+    <div class="prose">
+      <p>The grocer's profit is the reason the product gets bought, and I take that seriously. What draws me to this
+        role is that in fresh, profit and waste are the same problem: every pound that sells instead of being thrown
+        out is margin for the store and food that got eaten. I want to be on the team that makes that happen.</p>
+      <p>That's why the support side interests me. When an escalation is fixed at its root, one store's order isn't
+        the only thing fixed. Waste goes down at every store the same defect touched. Each ticket below ends with
+        what it costs, in pounds or in empty shelves.</p>
+    </div>
+  </section>
 
   <section id="bench" aria-labelledby="bench-h">
     <div class="sec-head">
@@ -288,6 +318,84 @@ footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88re
     <pre class="sql" id="sql-box"></pre>
   </section>
 
+
+  <section id="skill" aria-labelledby="skill-h">
+    <div class="sec-head">
+      <h2 id="skill-h">From escalation to Tier 1 skill</h2>
+      <p class="muted prose">Two of the four tickets above can be solved with two queries and a rule. That makes them
+        good candidates for a Claude skill that Tier 1 runs before escalating. Here is a sketch of one, and of
+        where it should stop.</p>
+    </div>
+    <div class="grid2">
+      <pre class="sql plain" aria-label="Example skill file"><span class="cm">---
+name: over-order-triage
+description: Use when a store reports an order far larger
+  than usual for one item. Runs the feed-freshness and
+  item-history checks before anyone escalates.
+---</span>
+
+<span class="kw"># Over-order triage</span>
+
+1. Get store_id, item_id and order date from the ticket.
+2. Run feed_freshness.sql for the store.
+   inventory_on_hand older than 24 h → stale feed.
+   Go to step 5.
+3. Run item_history.sql for the item and banner.
+   units_per_case changed by more than 50% in the
+   last 14 days → mapping defect. Go to step 5.
+4. Neither found → escalate to Support Engineering
+   with both results attached. Don't guess at the model.
+5. Draft the store reply and the internal note.
+   Log ticket ID, finding and outcome.</pre>
+      <div class="tip">
+        <h3>Where the automation stops</h3>
+        <ul class="list">
+          <li><b>It reads and drafts. It doesn't act.</b> It never edits an order or the item master. A person approves anything that goes to a store.</li>
+          <li><b>It only answers what data can prove.</b> A stale feed or a changed case size shows up in a query. A forecast miss is a judgment call, so the skill hands it to a person.</li>
+          <li><b>It shows its evidence.</b> Every answer includes the query results, so Tier 1 can check it rather than trust it.</li>
+          <li><b>It's measured.</b> Each run logs its outcome, so the deflection rate is counted, not estimated, and a wrong answer becomes a test case.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <section id="deflect" aria-labelledby="def-h">
+    <div class="sec-head">
+      <h2 id="def-h">Is it worth automating?</h2>
+      <p class="muted prose">Each ticket above ends with a check Tier 1 could run themselves: a dashboard, a playbook or
+        an AI skill. Before building one, I set a baseline. Move the sliders to try example numbers. These aren't real figures.</p>
+    </div>
+    <div class="panel calc">
+      <div style="display:grid;gap:16px">
+        <div class="field"><label for="c-tix">Escalations of this type per week <output id="o-tix"></output></label><input id="c-tix" type="range" min="1" max="60" value="12"></div>
+        <div class="field"><label for="c-min">Support engineer minutes per escalation <output id="o-min"></output></label><input id="c-min" type="range" min="10" max="180" step="5" value="45"></div>
+        <div class="field"><label for="c-share">Share Tier 1 could resolve with the new check <output id="o-share"></output></label><input id="c-share" type="range" min="0" max="100" step="5" value="60"></div>
+      </div>
+      <div class="calc-out">
+        <div><div class="big" id="r-avoid"></div><div class="big-label">escalations avoided per month</div></div>
+        <div><div class="big" id="r-hours"></div><div class="big-label">engineer hours back per month</div></div>
+        <p class="muted" style="font-size:.88rem">Measure the same two numbers again 30 days after launch. If they didn't move, the check isn't being used, or it's catching the wrong cases.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="update" aria-labelledby="update-h">
+    <div class="sec-head">
+      <h2 id="update-h">The update I'd post</h2>
+      <p class="muted prose">Baseline, result, owner, ask. Posted on a regular cadence in a channel where Product and
+        Data Engineering leadership can see it, including the items that are stuck. This is an example and the
+        numbers are invented.</p>
+    </div>
+    <div class="panel post">
+      <div class="post-head"><b>#support-eng-updates</b><span class="muted">Example post · invented numbers</span></div>
+      <p><b>Support Engineering · week of Nov 16</b></p>
+      <ul class="list">
+        <li><b>Stale on-hand feeds:</b> The feed-freshness check has been live for Tier 1 since Nov 2. Over-order escalations to Support Engineering went from 12 a week to 5. Time to detect a stale feed went from about 3 days to 6 hours.</li>
+        <li><b>Banana case-size defect:</b> 41 stores in one banner ordered with the bad case size on Nov 9–10. Catalog corrected it Nov 11. <b>Ask:</b> a guard in Data Engineering on vendor_sync case-size changes over 50%. <span class="flag">No owner yet. Flagging for a decision this week.</span></li>
+        <li><b>Delivery dates off by a day:</b> Reproduced with one query. 63 stores, about 110 late orders a week. Product Engineering owns the fix, target Dec 1. The Tier 1 workaround is in the playbook.</li>
+      </ul>
+    </div>
+  </section>
+
   <section id="symptoms" aria-labelledby="sym-h">
     <div class="sec-head">
       <h2 id="sym-h">Symptom to first check</h2>
@@ -320,23 +428,27 @@ footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.88re
     </div>
   </section>
 
-  <section id="deflect" aria-labelledby="def-h">
+
+  <section id="role" aria-labelledby="role-h">
     <div class="sec-head">
-      <h2 id="def-h">Is it worth automating?</h2>
-      <p class="muted prose">Each ticket above ends with a check Tier 1 could run themselves: a dashboard, a playbook or
-        an AI skill. Before building one, I set a baseline. Move the sliders to try example numbers. These aren't real figures.</p>
+      <h2 id="role-h">How this maps to the role</h2>
+      <p class="muted prose">How I read a senior support engineering role at a grocery AI company, and which part of this page speaks to each piece.</p>
     </div>
-    <div class="panel calc">
-      <div style="display:grid;gap:16px">
-        <div class="field"><label for="c-tix">Escalations of this type per week <output id="o-tix"></output></label><input id="c-tix" type="range" min="1" max="60" value="12"></div>
-        <div class="field"><label for="c-min">Support engineer minutes per escalation <output id="o-min"></output></label><input id="c-min" type="range" min="10" max="180" step="5" value="45"></div>
-        <div class="field"><label for="c-share">Share Tier 1 could resolve with the new check <output id="o-share"></output></label><input id="c-share" type="range" min="0" max="100" step="5" value="60"></div>
-      </div>
-      <div class="calc-out">
-        <div><div class="big" id="r-avoid"></div><div class="big-label">escalations avoided per month</div></div>
-        <div><div class="big" id="r-hours"></div><div class="big-label">engineer hours back per month</div></div>
-        <p class="muted" style="font-size:.88rem">Measure the same two numbers again 30 days after launch. If they didn't move, the check isn't being used, or it's catching the wrong cases.</p>
-      </div>
+    <div class="table-wrap">
+      <table class="wrap-cells">
+        <thead><tr><th>What the role asks</th><th>Where it shows up here</th></tr></thead>
+        <tbody>
+          <tr><td>Own the hardest escalations: data mapping defects, forecast anomalies, data-feed failures</td><td><a href="#bench">Work a ticket</a>: one ticket for each</td></tr>
+          <tr><td>Tell whether an anomaly comes from the data, the model or the application</td><td>The four layer checks, and a model miss treated as evidence for Applied Science, not a bug</td></tr>
+          <tr><td>Advanced SQL, validated against the authoritative source</td><td><a href="#sql">The SQL behind each check</a> and <a href="#tripups">things that trip people up</a></td></tr>
+          <tr><td>Build tooling and AI workflows that deflect volume, with judgment about where to trust them</td><td><a href="#skill">From escalation to Tier 1 skill</a></td></tr>
+          <tr><td>Baseline before building, quantify after, publish on a cadence</td><td><a href="#deflect">Is it worth automating?</a> and <a href="#update">the update I'd post</a></td></tr>
+          <tr><td>Drive change with teams you don't manage</td><td>"Who fixes it" on every ticket, and the open ask in the update</td></tr>
+          <tr><td>Multiply the team with playbooks and training</td><td><a href="#symptoms">Symptom to first check</a>, the tips, and the skill's playbook</td></tr>
+          <tr><td>Write clearly for a store director and a staff engineer</td><td>Each ticket's resolution: plain cause and cost first, queries underneath</td></tr>
+          <tr><td>Grocery domain knowledge: ordering, replenishment, fresh</td><td>Case sizes, on-hand counts, holiday lift, delivery cutoffs, shrink</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
@@ -460,7 +572,8 @@ scored <span class="kw">AS</span> (
         cause: "The retailer's on-hand inventory feed stopped sending updates after Sunday's early-morning count. The model kept seeing 16 clamshells, close to empty, and ordered to refill.",
         owner: "The retailer's integration team restarts the feed, with Solutions Engineering. Tier 1 helps the store correct today's order by hand.",
         build: "A feed-freshness dashboard that flags any store whose on-hand feed is more than 24 hours old, plus a Tier 1 playbook or AI skill step: \"Over-order ticket? Check feed freshness first.\"",
-        measure: "Share of over-order tickets caused by stale feeds, and hours from the feed stopping to someone noticing. Today that gap was three days."
+        measure: "Share of over-order tickets caused by stale feeds, and hours from the feed stopping to someone noticing. Today that gap was three days.",
+        cost: "27 extra cases, about 216 lb of strawberries, most of it headed for shrink. A stale feed rarely hits only one item, so every fresh item at this store was ordered against the same frozen counts."
       }
     },
     {
@@ -489,7 +602,8 @@ scored <span class="kw">AS</span> (
         cause: "A vendor catalog sync overwrote the banana case size with 4 lb, likely a dropped zero. Every order converts pounds to cases using that value, so the order came out ten times too large.",
         owner: "Catalog or Data Engineering corrects the item record and adds a guard on vendor_sync. Tier 1 holds today's order for every store in the banner, not just this one.",
         build: "A daily check for case-size changes over 50% on any item, sent to a support channel, plus a query that lists every store whose order used the bad value.",
-        measure: "Number of stores and orders affected before detection. Then the same number for the next mapping error, once the check is live."
+        measure: "Number of stores and orders affected before detection. Then the same number for the next mapping error, once the check is live.",
+        cost: "Caught before the truck: none. Missed: about 129 extra cases of a product with a few days of shelf life, at every store in the banner that ordered that day."
       }
     },
     {
@@ -518,7 +632,8 @@ scored <span class="kw">AS</span> (
         cause: "Feeds, mapping and order math were all correct. The model underestimated the Thanksgiving lift for this item at this store. Nothing is broken, so there's nothing to hotfix.",
         owner: "Applied Science, with evidence from Support: lift by day, last year's comparison, and whether other stores in the banner missed the same way.",
         build: "A pre-holiday report that lists items whose forecast lift is well below last year's actual lift, sent to account managers a week ahead so stores can adjust by hand.",
-        measure: "Holiday stockout tickets per banner, year over year, and how many flagged items stores adjusted before the holiday."
+        measure: "Holiday stockout tickets per banner, year over year, and how many flagged items stores adjusted before the holiday.",
+        cost: "Lost sales, not waste: an empty display on two of the biggest sweet-potato days of the year, and shoppers who may finish their Thanksgiving list somewhere else."
       }
     },
     {
@@ -547,7 +662,8 @@ scored <span class="kw">AS</span> (
         cause: "The app takes the approval time in UTC and adds one day to get the delivery date. UTC is 8 hours ahead of Pacific in winter (7 in summer), so anything approved after 4 PM local is already \"tomorrow\" in UTC and gets scheduled a day late.",
         owner: "Product Engineering, with the query above as the reproduction. Until it ships, Tier 1 tells affected stores to approve before 4 PM local.",
         build: "Run the same query across every store to count affected stores and orders. Then write a short Tier 1 playbook entry so the next \"right quantity, wrong day\" ticket is solved in minutes.",
-        measure: "Late-scheduled orders per week across all stores. It should drop to zero after the fix. If it doesn't, the fix missed a path."
+        measure: "Late-scheduled orders per week across all stores. It should drop to zero after the fix. If it doesn't, the fix missed a path.",
+        cost: "Both sides: about 75 bags of lost sales over three empty mornings, and every late case arrives with a day less shelf life, so more of it gets thrown out."
       }
     }
   ];
@@ -655,7 +771,8 @@ scored <span class="kw">AS</span> (
       <dl><dt>Root cause</dt><dd>${esc(o.cause)}</dd>
       <dt>Who fixes it</dt><dd>${esc(o.owner)}</dd>
       <dt>What I'd build</dt><dd>${esc(o.build)}</dd>
-      <dt>How I'd measure it</dt><dd>${esc(o.measure)}</dd></dl></div>`;
+      <dt>How I'd measure it</dt><dd>${esc(o.measure)}</dd>
+      <dt>What it costs</dt><dd>${esc(o.cost)}</dd></dl></div>`;
   }
 
   function renderSQL() {
