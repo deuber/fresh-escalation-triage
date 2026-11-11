@@ -24,7 +24,9 @@ An interactive, single-page support engineering exercise. A grocery store writes
 
 ## Honest scope
 
-This is a **simulation**. Every store, item, number and table name is invented, and the page runs entirely in the browser with no network calls. It's a personal project modeled on the kinds of escalations described in public support engineering job postings for grocery AI platforms. Not affiliated with any company.
+Built while applying for the Senior Support Engineer role at [Afresh](https://www.afresh.com/). The escalation types come from the job posting; the scenarios are my own.
+
+This is a **simulation**. Every store, item, number and table name is invented, and the page runs entirely in the browser with no network calls. I don't work at Afresh and have no access to its systems or data. Not affiliated with or endorsed by Afresh.
 
 ## Run locally
 
